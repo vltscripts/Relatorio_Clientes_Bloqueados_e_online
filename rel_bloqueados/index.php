@@ -433,8 +433,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     // Verifica o status e exibe "Ativo" se o cliente estiver online
     $status = $row['status'];
     if ($status == 'online') {
-        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #1a0deb; font-weight: bold;'>Ativo</td>";
-        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #1a0deb; font-weight: bold;'>-</td>"; // Preenche com '-' para o tempo offline de clientes online
+        echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #078910; font-weight: bold;'>". $dataBloqFormatada . "</td>";
+        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #078910; font-weight: bold;'>Ativo</td>";
     } else {
         // Calcula o tempo offline em segundos
         $ultimaConexao = strtotime($row['ultima_desconexao']);
