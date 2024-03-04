@@ -90,13 +90,13 @@ $manifestVersion = isset($Manifest->{'version'}) ? $Manifest->{'version'} : '';
 
         table th,
         table td {
-            padding: 8px;
+            padding: 5px;
             text-align: left;
             border: 1px solid #ddd;
         }
 
         table th {
-            background-color: #4caf50;
+            background-color: #0d6cea;
             color: white;
             font-weight: bold;
             text-align: center;
@@ -143,19 +143,24 @@ $manifestVersion = isset($Manifest->{'version'}) ? $Manifest->{'version'} : '';
             color: #f44336; /* Cor vermelha */
             font-weight: bold;
         }
+		/* Estilo do botao ordenar */
 		    .sort-button {
-        padding: 4px 10px;
+        padding: 1px 10px;
         background-color: #1e7bf3;
         color: white;
         border: none;
         border-radius: 4px;
         cursor: pointer;
         transition: background-color 0.3s;
-    }
+        }
 
-    .sort-button:hover {
+        .sort-button:hover {
         background-color: #45a049;
-    }
+        }
+		/* Estilos Nome do Cliente e Login */
+       .red-text {
+        color: #f44336; /* Cor vermelha */
+       }
     </style>
 
 <script>
@@ -346,99 +351,122 @@ $manifestVersion = isset($Manifest->{'version'}) ? $Manifest->{'version'} : '';
                         <th style='text-align: center;'>Login</th>
                         <th style='text-align: center;'>Servidor</th>
                         <th style='text-align: center;'>Boletos Vencidos</th>
-                        <th style='text-align: center;'>Tempo Offline <span id="sortButtonContainer"><?php if ($_GET['status'] === 'offline') { echo "<button class=\"sort-button\" onclick=\"sortTable(4)\">Ordenar</button>"; } ?></span></th> <!-- Nova coluna adicionada -->
-
+                        <th style='text-align: center;'>Data de Bloqueio</th>
+                        <th style='text-align: center;'>Tempo Offline <span id="sortButtonContainer"><?php if ($_GET['status'] === 'offline') { echo "<button class=\"sort-button\" onclick=\"sortTable(5)\">Ordenar</button>"; } ?></span></th> <!-- Nova coluna adicionada -->
                     </tr>
                 </thead>
                 <tbody>
-                    <?php
-                    // Adicione a condição de busca, se houver
-                    $searchCondition = '';
-                    if (!empty($_GET['search'])) {
-                        $search = mysqli_real_escape_string($link, $_GET['search']);
-                        $searchCondition = " AND (c.login LIKE '%$search%' OR c.nome LIKE '%$search%' OR r.calledstationid LIKE '%$search%')";
-                    }
+<?php
+// Adicione a condição de busca, se houver
+$searchCondition = '';
+if (!empty($_GET['search'])) {
+$search = mysqli_real_escape_string($link, $_GET['search']);
+$searchCondition = " AND (c.login LIKE '%$search%' OR c.nome LIKE '%$search%' OR r.calledstationid LIKE '%$search%')";
+}
+// Modifique a consulta SQL para incluir a coluna data_bloq
+$query = "SELECT c.uuid_cliente, c.nome, c.login, MAX(r.calledstationid) AS calledstationid, c.tit_vencidos,
+                MAX(r.acctstarttime) AS ultima_conexao,
+                MAX(r.acctstoptime) AS ultima_desconexao,
+                IFNULL((
+                    SELECT IF(r.acctstoptime IS NULL AND r.radacctid IS NOT NULL, 'online', 'offline') 
+                    FROM radacct r 
+                    WHERE r.username = c.login 
+                    ORDER BY r.acctstarttime DESC 
+                    LIMIT 1
+                ), 'offline') AS status,
+                c.data_bloq
+            FROM sis_cliente c
+            LEFT JOIN radacct r ON c.login = r.username
+            WHERE c.bloqueado = 'sim' 
+            AND c.cli_ativado = 's'";
 
-                    // Consulta SQL para obter os clientes com base no status selecionado e na busca
-                    $query = "SELECT c.uuid_cliente, c.nome, c.login, MAX(r.calledstationid) AS calledstationid, c.tit_vencidos,
-                                    MAX(r.acctstarttime) AS ultima_conexao,
-                                    MAX(r.acctstoptime) AS ultima_desconexao,
-                                    IFNULL((
-                                        SELECT IF(r.acctstoptime IS NULL AND r.radacctid IS NOT NULL, 'online', 'offline') 
-                                        FROM radacct r 
-                                        WHERE r.username = c.login 
-                                        ORDER BY r.acctstarttime DESC 
-                                        LIMIT 1
-                                    ), 'offline') AS status
-                                FROM sis_cliente c
-                                LEFT JOIN radacct r ON c.login = r.username
-                                WHERE c.bloqueado = 'sim' 
-                                AND c.cli_ativado = 's'";
+// Adicione a condição de busca à consulta principal
+$query .= $searchCondition;
 
-                    // Adicione a condição de busca à consulta principal
-                    $query .= $searchCondition;
+// Verifica se a opção "status" foi enviada via GET e ajusta a consulta SQL conforme necessário
+if (!empty($_GET['status'])) {
+    if ($_GET['status'] == 'online') {
+        // Se o status for online, seleciona apenas os clientes com uma sessão ativa
+        $query .= " AND r.acctstoptime IS NULL 
+                    AND r.radacctid IS NOT NULL";
+    } elseif ($_GET['status'] == 'offline') {
+        // Se o status for offline, seleciona apenas os clientes sem sessão ativa
+        $query .= " AND IFNULL(r.acctstoptime, '1970-01-01 00:00:00') < NOW() 
+                    AND NOT EXISTS (
+                        SELECT 1 FROM radacct ra WHERE ra.username = c.login AND ra.acctstoptime IS NULL
+                    )";
+    }
+}
 
-                    // Verifica se a opção "status" foi enviada via GET e ajusta a consulta SQL conforme necessário
-                    if (!empty($_GET['status'])) {
-                        if ($_GET['status'] == 'online') {
-                            // Se o status for online, seleciona apenas os clientes com uma sessão ativa
-                            $query .= " AND r.acctstoptime IS NULL 
-                                        AND r.radacctid IS NOT NULL";
-                        } elseif ($_GET['status'] == 'offline') {
-                            // Se o status for offline, seleciona apenas os clientes sem sessão ativa
-                            $query .= " AND IFNULL(r.acctstoptime, '1970-01-01 00:00:00') < NOW() 
-                                        AND NOT EXISTS (
-                                            SELECT 1 FROM radacct ra WHERE ra.username = c.login AND ra.acctstoptime IS NULL
-                                        )";
-                        }
-                    }
+$query .= " GROUP BY c.uuid_cliente, c.nome, c.login, c.tit_vencidos, c.data_bloq
+            ORDER BY c.nome ASC";
 
-                    $query .= " GROUP BY c.uuid_cliente, c.nome, c.login, c.tit_vencidos
-                                ORDER BY c.nome ASC";
+// Execute a consulta
+$result = mysqli_query($link, $query);
 
-                    // Execute a consulta
-                    $result = mysqli_query($link, $query);
+// Execute a consulta
+$result = mysqli_query($link, $query);
 
-                    // Verifique se a consulta foi bem-sucedida
-                    if ($result) {
-                        // Exiba os resultados da consulta SQL
-                        while ($row = mysqli_fetch_assoc($result)) {
-                            $nome_por_num_titulo = "Nome do Cliente: " . $row['nome'] . " - UUID: " . $row['uuid_cliente'];
+// Verifique se a consulta foi bem-sucedida
+if ($result) {
+	
+// Exiba os resultados da consulta SQL
+while ($row = mysqli_fetch_assoc($result)) {
+    $nome_por_num_titulo = "Nome do Cliente: " . $row['nome'] . " - UUID: " . $row['uuid_cliente'];
 
-                            // Adiciona a classe 'nome_cliente' e 'highlight' (para linhas ímpares) alternadamente
-                            $nomeClienteClass = ($rowNumber % 2 == 0) ? 'nome_cliente' : 'nome_cliente highlight';
+    // Adiciona a classe 'nome_cliente' e 'highlight' (para linhas ímpares) alternadamente
+    $nomeClienteClass = ($rowNumber % 2 == 0) ? 'nome_cliente' : 'nome_cliente highlight';
 
-                            // Adiciona o link apenas no campo de nome do cliente
-                            echo "<tr class='$nomeClienteClass'>";
-                            echo "<td style='border: 1px solid #ddd; padding: 2px;'><a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank' >" . $row['nome'] . "</a></td>";
-                            echo "<td style='border: 1px solid #ddd; padding: 2px;'><a href='../../relatorios_u.hhvm?login=" . $row['login'] . "' target='_blank' >" . $row['login'] . "</a></td>";
-                            echo "<td style='border: 1px solid #ddd; padding: 2px; text-align: center; font-weight: bold;' class='calledstationid'><a target='_blank' style='color: #06683e;'>" . $row['calledstationid'] . "</a></td>";
-                            echo "<td style='border: 1px solid #ddd; padding: 2px; text-align: center; color: #f44336; font-weight: bold;' class='highlighted'>" . $row['tit_vencidos'] . "</td>";
+    // Converta a data para um formato de timestamp usando strtotime()
+    $dataBloqTimestamp = strtotime($row['data_bloq']);
 
-                            // Verifica o status e exibe "Ativo" se o cliente estiver online
-                            $status = $row['status'];
-                            if ($status == 'online') {
-                                echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #1a0deb; font-weight: bold;'>Ativo</td>";
-                            } else {
-                                // Calcula o tempo offline em segundos
-                                $ultimaConexao = strtotime($row['ultima_desconexao']);
-                                $tempoOffline = time() - $ultimaConexao;
+    // Formate a data para o formato desejado
+    $dataBloqFormatada = date('d-m-Y', $dataBloqTimestamp);
 
-                                // Converte o tempo offline para dias, horas, minutos e segundos
-                                $dias = floor($tempoOffline / (60 * 60 * 24));
-                                $horas = floor(($tempoOffline % (60 * 60 * 24)) / (60 * 60));
-                                $minutos = floor(($tempoOffline % (60 * 60)) / 60);
-                                $segundos = $tempoOffline % 60;
+    // Adiciona o link apenas no campo de nome do cliente
+    echo "<tr class='$nomeClienteClass'>";
+    echo "<td style='border: 1px solid #ddd; padding: 1px;'><a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'><span class='red-text'>" . $row['nome'] . "</span></a></td>";
+    echo "<td style='border: 1px solid #ddd; padding: 1px;'><a href='../../relatorios_u.hhvm?login=" . $row['login'] . "' target='_blank'><span class='red-text'>" . $row['login'] . "</span></a></td>";
+    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; font-weight: bold;' class='calledstationid'><a target='_blank' style='color: #06683e;'>" . $row['calledstationid'] . "</a></td>";
+    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #f44336; font-weight: bold;' class='highlighted'>" . $row['tit_vencidos'] . "</td>";
 
-                                // Exibe o tempo offline formatado
-                                echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #0d6cea; font-weight: bold;' class='highlighted' data-seconds='$tempoOffline'>$dias dias, $horas horas, $minutos minutos </td>";
-                            }
+    // Verifica o status e exibe "Ativo" se o cliente estiver online
+    $status = $row['status'];
+    if ($status == 'online') {
+        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #1a0deb; font-weight: bold;'>Ativo</td>";
+        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #1a0deb; font-weight: bold;'>-</td>"; // Preenche com '-' para o tempo offline de clientes online
+    } else {
+        // Calcula o tempo offline em segundos
+        $ultimaConexao = strtotime($row['ultima_desconexao']);
+        $tempoOffline = time() - $ultimaConexao;
 
-                            echo "</tr>";
-                        }
+        // Calcula o tempo offline em dias, horas e minutos
+        $days = floor($tempoOffline / (60 * 60 * 24));
+        $remainingSeconds = $tempoOffline % (60 * 60 * 24);
+        $hours = floor($remainingSeconds / (60 * 60));
+        $remainingSeconds %= (60 * 60);
+        $minutes = floor($remainingSeconds / 60);
+
+        // Formata o tempo offline
+        $offlineTimeFormatted = "";
+        if ($days > 0) {
+            $offlineTimeFormatted .= $days . "D, ";
+        }
+        $offlineTimeFormatted .= sprintf("%02d:%02d", $hours, $minutes);
+
+        // Exibe o tempo offline formatado
+        echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #000000; font-weight: bold;'>". $dataBloqFormatada . "</td>";
+
+        // Exiba a data formatada na tabela
+        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #000000; font-weight: bold;' class='highlighted' data-seconds='$tempoOffline'>$offlineTimeFormatted</td>";
+    }
+
+    echo "</tr>";
+}
                     } else {
                         // Se a consulta falhar, exiba uma mensagem de erro
                         echo "<tr><td colspan='5'>Erro na consulta: " . mysqli_error($link) . "</td></tr>";
+					
                     }
                     ?>
                 </tbody>
