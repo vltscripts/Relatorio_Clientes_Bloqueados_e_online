@@ -304,12 +304,21 @@ if ($countResult) {
         }
 
         // Consulta SQL para obter os clientes com base no status selecionado e na busca
-        $query = "SELECT c.uuid_cliente, c.nome, c.login, MAX(r.calledstationid) AS calledstationid, c.tit_vencidos,
-                         MAX(r.acctstarttime) AS ultima_conexao
-                  FROM sis_cliente c
-                  LEFT JOIN radacct r ON c.login = r.username
-                  WHERE c.bloqueado = 'sim' 
-                  AND c.cli_ativado = 's'";
+$query = "SELECT c.uuid_cliente, c.nome, c.login, MAX(r.calledstationid) AS calledstationid, c.tit_vencidos,
+                 MAX(r.acctstarttime) AS ultima_conexao,
+                 MAX(r.acctstoptime) AS ultima_desconexao,
+                 IFNULL((
+                     SELECT IF(r.acctstoptime IS NULL AND r.radacctid IS NOT NULL, 'online', 'offline') 
+                     FROM radacct r 
+                     WHERE r.username = c.login 
+                     ORDER BY r.acctstarttime DESC 
+                     LIMIT 1
+                 ), 'offline') AS status
+          FROM sis_cliente c
+          LEFT JOIN radacct r ON c.login = r.username
+          WHERE c.bloqueado = 'sim' 
+          AND c.cli_ativado = 's'";
+
 
         // Adicione a condição de busca à consulta principal
         $query .= $searchCondition;
@@ -332,6 +341,10 @@ if ($countResult) {
         $query .= " GROUP BY c.uuid_cliente, c.nome, c.login, c.tit_vencidos
                     ORDER BY c.nome ASC";
 
+// Execute a consulta
+$result = mysqli_query($link, $query);
+
+
         // Execute a consulta
         $result = mysqli_query($link, $query);
 
@@ -351,12 +364,13 @@ while ($row = mysqli_fetch_assoc($result)) {
     echo "<td style='border: 1px solid #ddd; padding: 2px; text-align: center; font-weight: bold;' class='calledstationid'><a target='_blank' style='color: #06683e;'>" . $row['calledstationid'] . "</a></td>";
     echo "<td style='border: 1px solid #ddd; padding: 2px; text-align: center; color: #f44336; font-weight: bold;' class='highlighted'>" . $row['tit_vencidos'] . "</td>";
     
-    // Verifica se o cliente está online e exibe "Ativo" em vez da última conexão
-    if (!empty($row['ultima_conexao']) && $_GET['status'] == 'online') {
-        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #0d6cea; font-weight: bold;'>Ativo</td>";
-    } else {
+// Verifica o status e exibe "Ativo" se o cliente estiver online
+$status = $row['status'];
+if ($status == 'online') {
+    echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #1a0deb; font-weight: bold;'>Ativo</td>";
+} else {
         // Calcula o tempo offline em segundos
-        $ultimaConexao = strtotime($row['ultima_conexao']);
+        $ultimaConexao = strtotime($row['ultima_desconexao']);
         $tempoOffline = time() - $ultimaConexao;
 
         // Converte o tempo offline para dias, horas, minutos e segundos
