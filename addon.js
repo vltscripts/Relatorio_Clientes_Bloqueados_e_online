@@ -5,4 +5,4 @@
 */
 
 const minha_url = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: '') + "/admin/";
-add_menu.conexoes('{"plink": "' + minha_url + 'addons/rel_bloq_ativos/", "ptext": "Relatorio Bloqueados e Online"}');
+add_menu.conexoes('{"plink": "' + minha_url + 'addons/rel_bloqueados/", "ptext": "Relatorio Clientes Bloqueados"}');
