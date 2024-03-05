@@ -425,16 +425,43 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     // Adiciona o link apenas no campo de nome do cliente
     echo "<tr class='$nomeClienteClass'>";
-    echo "<td style='border: 1px solid #ddd; padding: 1px;'><a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'><span class='red-text'>" . $row['nome'] . "</span></a></td>";
+    echo "<td style='border: 1px solid #ddd; padding: 1px;'><a href='../../cliente_alt.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'><span class='red-text'>" . $row['nome'] . "</span></a></td>";
     echo "<td style='border: 1px solid #ddd; padding: 1px;'><a href='../../relatorios_u.hhvm?login=" . $row['login'] . "' target='_blank'><span class='red-text'>" . $row['login'] . "</span></a></td>";
     echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; font-weight: bold;' class='calledstationid'><a target='_blank' style='color: #06683e;'>" . $row['calledstationid'] . "</a></td>";
-    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #f44336; font-weight: bold;' class='highlighted'>" . $row['tit_vencidos'] . "</td>";
+echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; font-weight: bold;' class='highlighted'>";
+if ($row['tit_vencidos'] > 0) {
+    echo "<a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'>";
+    echo "<img src='img/icon_boleto.png' alt='Boletos Vencidos' style='vertical-align: middle; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
+    echo $row['tit_vencidos'];
+    echo "</a>";
+} else {
+    echo "<a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'>";
+    echo "Nenhum boleto vencido";
+    echo "</a>";
+}
+echo "</td>";
+
 
     // Verifica o status e exibe "Ativo" se o cliente estiver online
     $status = $row['status'];
     if ($status == 'online') {
         echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #078910; font-weight: bold;'>". $dataBloqFormatada . "</td>";
-        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #078910; font-weight: bold;'>Ativo</td>";
+        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; font-weight: bold;'>";
+
+// Verifica se o status é "Ativo"
+if ($status == 'online') {
+    // Se o cliente estiver ativo, exibe o ícone "Cliente Ativo" à esquerda do texto "Ativo"
+    echo "<img src='img/icon_ativo.png' alt='Cliente Ativo' style='float: left; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
+    echo "<span style='color: #078910;'>Ativo</span>";
+} else {
+    // Se o cliente estiver inativo, exibe apenas o texto "Inativo"
+    echo "Inativo";
+}
+
+
+
+echo "</td>";
+
     } else {
         // Calcula o tempo offline em segundos
         $ultimaConexao = strtotime($row['ultima_desconexao']);
@@ -458,8 +485,14 @@ while ($row = mysqli_fetch_assoc($result)) {
         echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #000000; font-weight: bold;'>". $dataBloqFormatada . "</td>";
 
         // Exiba a data formatada na tabela
-        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #000000; font-weight: bold;' class='highlighted' data-seconds='$tempoOffline'>$offlineTimeFormatted</td>";
-    }
+echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #000000; font-weight: bold;' class='highlighted' data-seconds='$tempoOffline'>";
+if ($status == 'offline') {
+    echo "<img src='img/icon_bloqueado.png' alt='Cliente Bloqueado' style='float: left; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
+}
+echo "$offlineTimeFormatted";
+echo "</td>";
+
+  }
 
     echo "</tr>";
 }
