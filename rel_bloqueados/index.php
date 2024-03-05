@@ -87,7 +87,7 @@ $manifestVersion = isset($Manifest->{'version'}) ? $Manifest->{'version'} : '';
             border-collapse: collapse;
             margin-top: 20px;
         }
-
+        /* Estilo para layout inteiro */
         table th,
         table td {
             padding: 5px;
@@ -161,6 +161,15 @@ $manifestVersion = isset($Manifest->{'version'}) ? $Manifest->{'version'} : '';
        .red-text {
         color: #f44336; /* Cor vermelha */
        }
+	   /* Estilos CSS personalizados */
+       .nome_cliente td {
+       text-align: center;
+       max-width: 260px; /* Defina a largura máxima desejada */
+       overflow: hidden;
+       white-space: nowrap;
+       text-overflow: ellipsis; /* Adiciona reticências (...) para indicar que o texto foi cortado */
+       }
+
     </style>
 
 <script>
@@ -251,43 +260,103 @@ $manifestVersion = isset($Manifest->{'version'}) ? $Manifest->{'version'} : '';
 
     <?php
     if ($acesso_permitido) {
-        // Formulário Atualizado com Funcionalidade de Busca
+    // Formulário Atualizado com Funcionalidade de Busca
     ?>
-        <form id="searchForm" method="GET">
-            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                <div style="width: 60%; margin-right: 10px;">
-                    <label for="search" style="font-weight: bold; margin-bottom: 5px;">Buscar Cliente:</label>
-                    <input type="text" id="search" name="search" placeholder="Digite o Login ou Usuário" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
-                </div>
-                <div style="width: 20%; margin-right: 10px;">
-                    <label for="status" style="font-weight: bold; margin-bottom: 5px;">Status:</label>
-                    <select id="status" name="status" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
-                        <option value="all" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'all') ? 'selected' : ''; ?>>Todos</option>
-                        <option value="online" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'online') ? 'selected' : ''; ?>>Online</option>
-                        <option value="offline" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'offline') ? 'selected' : ''; ?>>Offline</option>
-                    </select>
-                </div>
-                <div style="flex: 1;">
-                    <input type="submit" value="Buscar" style="width: 100%; padding: 10px; border: 1px solid #4caf50; background-color: #4caf50; color: white; font-weight: bold; cursor: pointer; border-radius: 5px;">
-                </div>
-                <div style="flex: 1; margin-left: 10px;">
-                    <button type="button" onclick="clearSearch()" class="clear-button" style="width: 100%; padding: 10px; border: 1px solid #e74c3c; background-color: #e74c3c; color: white; font-weight: bold; cursor: pointer; border-radius: 5px;">Limpar</button>
-                </div>
-            </div>
-        </form>
-        <script>
-            function clearSearch() {
-                // Limpa o campo de pesquisa
-                document.getElementById('search').value = '';
+<form id="searchForm" method="GET">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px;">
+        <div style="width: 60%; margin-right: 10px;">
+            <label for="search" style="font-weight: bold; margin-bottom: 5px;">Buscar Cliente:</label>
+            <input type="text" id="search" name="search" placeholder="Digite o Login ou Usuário" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
+        </div>
+        <div style="width: 20%; margin-right: 10px;">
+            <label for="status" style="font-weight: bold; margin-bottom: 5px;">Status:</label>
+            <select id="status" name="status" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
+                <option value="all" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'all') ? 'selected' : ''; ?>>Todos</option>
+                <option value="online" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'online') ? 'selected' : ''; ?>>Online</option>
+                <option value="offline" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'offline') ? 'selected' : ''; ?>>Offline</option>
+            </select>
+        </div>
+        <div style="display: flex; align-items: flex-end;">
+            <input type="submit" value="Buscar" style="padding: 10px; border: 1px solid #4caf50; background-color: #4caf50; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-right: 10px;">
+            <button type="button" onclick="clearSearch()" class="clear-button" style="padding: 10px; border: 1px solid #e74c3c; background-color: #e74c3c; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-right: 10px;">Limpar</button>
+            <button type="button" onclick="sortTable2(4)" class="clear-button sort-button-2" style="padding: 10px; border: 1px solid #4336f4; background-color: #4336f4; color: white; font-weight: bold; cursor: pointer; border-radius: 5px;">Ordenar</button>
+        </div>
+    </div>
+</form>
 
-                // Atualiza o valor do campo de seleção de status para "todos"
-                document.getElementById('status').value = 'todos';
 
-                // Submeta o formulário
-                document.getElementById('searchForm').submit();
+<script>
+    function clearSearch() {
+        // Limpa o campo de pesquisa
+        document.getElementById('search').value = '';
+
+        // Atualiza o valor do campo de seleção de status para "todos"
+        document.getElementById('status').value = 'todos';
+
+        // Submeta o formulário
+        document.getElementById('searchForm').submit();
+    }
+</script>
+
+<script>
+    var sortDirection2 = 'desc'; // Definir a direção inicial da ordenação como descendente
+    var sortColumnIndex2 = 4; // Índice da coluna de data de bloqueio
+
+    // Função para ordenar a tabela
+    function sortTable2() {
+        var table, rows, switching, i, x, y, shouldSwitch;
+        table = document.querySelector('.table-container table');
+        switching = true;
+        
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = getDateFromString(rows[i].getElementsByTagName('td')[sortColumnIndex2].textContent);
+                y = getDateFromString(rows[i + 1].getElementsByTagName('td')[sortColumnIndex2].textContent);
+                
+                if (sortDirection2 === 'desc') {
+                    if (x < y) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else {
+                    if (x > y) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
             }
-        </script>
+            
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+            }
+        }
+    }
 
+    // Função auxiliar para converter string de data em objeto Date
+    function getDateFromString(dateString) {
+        var parts = dateString.split('-');
+        var day = parseInt(parts[0], 10);
+        var month = parseInt(parts[1], 10) - 1; // Mês é baseado em zero (janeiro é 0)
+        var year = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+    }
+
+    // Adicionando evento de clique ao botão de ordenação
+    document.addEventListener("DOMContentLoaded", function() {
+        var sortButton2 = document.querySelector('.sort-button-2');
+        sortButton2.addEventListener('click', function(event) {
+            event.preventDefault();
+            sortTable2();
+            // Alternar a direção da ordenação após cada clique
+            sortDirection2 = (sortDirection2 === 'desc') ? 'asc' : 'desc';
+        });
+    });
+</script>
 
     <?php
         // Dados de conexão com o banco de dados já estão em config.php
@@ -423,76 +492,90 @@ while ($row = mysqli_fetch_assoc($result)) {
     // Formate a data para o formato desejado
     $dataBloqFormatada = date('d-m-Y', $dataBloqTimestamp);
 
-    // Adiciona o link apenas no campo de nome do cliente
-    echo "<tr class='$nomeClienteClass'>";
-    echo "<td style='border: 1px solid #ddd; padding: 1px;'><a href='../../cliente_alt.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'><span class='red-text'>" . $row['nome'] . "</span></a></td>";
-    echo "<td style='border: 1px solid #ddd; padding: 1px;'><a href='../../relatorios_u.hhvm?login=" . $row['login'] . "' target='_blank'><span class='red-text'>" . $row['login'] . "</span></a></td>";
-    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; font-weight: bold;' class='calledstationid'><a target='_blank' style='color: #06683e;'>" . $row['calledstationid'] . "</a></td>";
+// Nome do Cliente	
+echo "<tr class='$nomeClienteClass'>";
+echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; font-weight: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 150px;'>"; // Definindo a largura da célula para 150px
+echo "<a href='../../cliente_alt.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank' style='color: #06683e; display: flex; align-items: center;' title='" . $row['nome'] . "'>"; // Adicionando estilo inline e tooltip
+echo "<img src='img/icon_cliente.png' alt='Cliente' style='margin-right: 5px; width: 25px; height: 25px;'>"; // Ajuste o tamanho conforme necessário
+echo "<span class='red-text'>" . $row['nome'] . "</span>";
+echo "</a>";
+echo "</td>";
+
+// Login
+echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center;' title='Login: " . $row['login'] . "'>"; // Adicionando tooltip ao <td>
+echo "<a href='../../relatorios_u.hhvm?login=" . $row['login'] . "' target='_blank' style='display: flex; align-items: center;'>";
+echo "<img src='img/icon_globo.png' alt='Ícone Globo' style='width: 25px; height: 25px;'>";
+echo "<span class='red-text' style='margin: auto;'>";
+echo $row['login'];
+echo "</span>";
+echo "</a>";
+echo "</td>";
+
+// Servidor
+echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; font-weight: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;' class='calledstationid'>";
+echo "<a target='_blank' style='color: #06683e; display: flex; align-items: center;' title='" . $row['calledstationid'] . "'>"; // Adicionando estilo inline e tooltip
+echo "<img src='img/icon_servidor.png' alt='Servidor' style='margin-right: 5px; width: 25px; height: 25px;'>"; // Ajuste o tamanho conforme necessário
+echo $row['calledstationid'];
+echo "</a>";
+echo "</td>";
+
+// Boletos Vencidos
 echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; font-weight: bold;' class='highlighted'>";
-if ($row['tit_vencidos'] > 0) {
-    echo "<a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'>";
-    echo "<img src='img/icon_boleto.png' alt='Boletos Vencidos' style='vertical-align: middle; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
-    echo $row['tit_vencidos'];
-    echo "</a>";
-} else {
-    echo "<a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'>";
-    echo "Nenhum boleto vencido";
-    echo "</a>";
-}
+echo "<a href='../../cliente_det.hhvm?uuid=" . $row['uuid_cliente'] . "' target='_blank'>";
+echo "<img src='img/icon_boleto.png' alt='Boletos Vencidos' style='vertical-align: middle; margin-right: 2px; width: 25px; height: 25px;'>";
+echo $row['tit_vencidos'];
+echo "</a>";
 echo "</td>";
 
-
-    // Verifica o status e exibe "Ativo" se o cliente estiver online
-    $status = $row['status'];
-    if ($status == 'online') {
-        echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #078910; font-weight: bold;'>". $dataBloqFormatada . "</td>";
-        echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; font-weight: bold;'>";
-
-// Verifica se o status é "Ativo"
+// Data de Bloqueio	
+$status = $row['status'];
 if ($status == 'online') {
-    // Se o cliente estiver ativo, exibe o ícone "Cliente Ativo" à esquerda do texto "Ativo"
-    echo "<img src='img/icon_ativo.png' alt='Cliente Ativo' style='float: left; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
-    echo "<span style='color: #078910;'>Ativo</span>";
-} else {
-    // Se o cliente estiver inativo, exibe apenas o texto "Inativo"
-    echo "Inativo";
-}
+    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #078910; font-weight: bold;'>". $dataBloqFormatada . "</td>";
+    echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; font-weight: bold;'>";
 
-
-
-echo "</td>";
-
+    // Verifica se o status é "Ativo"
+    if ($status == 'online') {
+        // Se o cliente estiver ativo, exibe o ícone "Cliente Ativo" à esquerda do texto "Ativo"
+        echo "<img src='img/icon_ativo.png' alt='Cliente Ativo' style='float: left; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
+        echo "<span style='color: #078910;'>Ativo</span>";
     } else {
-        // Calcula o tempo offline em segundos
-        $ultimaConexao = strtotime($row['ultima_desconexao']);
-        $tempoOffline = time() - $ultimaConexao;
+        // Se o cliente estiver inativo, exibe apenas o texto "Inativo"
+        echo "Inativo";
+    }
 
-        // Calcula o tempo offline em dias, horas e minutos
-        $days = floor($tempoOffline / (60 * 60 * 24));
-        $remainingSeconds = $tempoOffline % (60 * 60 * 24);
-        $hours = floor($remainingSeconds / (60 * 60));
-        $remainingSeconds %= (60 * 60);
-        $minutes = floor($remainingSeconds / 60);
-
-        // Formata o tempo offline
-        $offlineTimeFormatted = "";
-        if ($days > 0) {
-            $offlineTimeFormatted .= $days . "D, ";
-        }
-        $offlineTimeFormatted .= sprintf("%02d:%02d", $hours, $minutes);
-
-        // Exibe o tempo offline formatado
-        echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #000000; font-weight: bold;'>". $dataBloqFormatada . "</td>";
-
-        // Exiba a data formatada na tabela
-echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #000000; font-weight: bold;' class='highlighted' data-seconds='$tempoOffline'>";
-if ($status == 'offline') {
-    echo "<img src='img/icon_bloqueado.png' alt='Cliente Bloqueado' style='float: left; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
-}
-echo "$offlineTimeFormatted";
+// Tempo OFFLINE
 echo "</td>";
+} else {
+    // Calcula o tempo offline em segundos
+    $ultimaConexao = strtotime($row['ultima_desconexao']);
+    $tempoOffline = time() - $ultimaConexao;
 
-  }
+    // Calcula o tempo offline em dias, horas e minutos
+    $days = floor($tempoOffline / (60 * 60 * 24));
+    $remainingSeconds = $tempoOffline % (60 * 60 * 24);
+    $hours = floor($remainingSeconds / (60 * 60));
+    $remainingSeconds %= (60 * 60);
+    $minutes = floor($remainingSeconds / 60);
+
+    // Formata o tempo offline
+    $offlineTimeFormatted = "";
+    if ($days > 0) {
+        $offlineTimeFormatted .= $days . "D, ";
+    }
+    $offlineTimeFormatted .= sprintf("%02d:%02d", $hours, $minutes);
+
+    // Exibe o tempo offline formatado
+    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #000000; font-weight: bold;'>". $dataBloqFormatada . "</td>";
+
+    // Exiba a data formatada na tabela
+    echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #000000; font-weight: bold;' class='highlighted' data-seconds='$tempoOffline'>";
+    if ($status == 'offline') {
+        echo "<img src='img/icon_bloqueado.png' alt='Cliente Bloqueado' style='float: left; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
+    }
+    echo "$offlineTimeFormatted";
+    echo "</td>";
+}
+
 
     echo "</tr>";
 }
