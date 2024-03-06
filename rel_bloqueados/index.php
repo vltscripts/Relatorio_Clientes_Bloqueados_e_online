@@ -527,10 +527,11 @@ echo $row['tit_vencidos'];
 echo "</a>";
 echo "</td>";
 
-// Data de Bloqueio	
+// Data de Bloqueio	Ativo
 $status = $row['status'];
 if ($status == 'online') {
-    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #078910; font-weight: bold;'>". $dataBloqFormatada . "</td>";
+	// Exiba a data formatada na tabela ativa
+    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #078910; font-weight: bold;'>" . date('d-m-Y / H:i', strtotime($row['data_bloq'])) . "</td>";
     echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; font-weight: bold;'>";
 
     // Verifica se o status é "Ativo"
@@ -564,10 +565,10 @@ echo "</td>";
     }
     $offlineTimeFormatted .= sprintf("%02d:%02d", $hours, $minutes);
 
-    // Exibe o tempo offline formatado
-    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #000000; font-weight: bold;'>". $dataBloqFormatada . "</td>";
+    // Exiba a data formatada na tabela Off-line
+    echo "<td style='border: 1px solid #ddd; padding: 1px; text-align: center; color: #f44336; font-weight: bold;'>" . date('d-m-Y / H:i', strtotime($row['data_bloq'])) . "</td>";
 
-    // Exiba a data formatada na tabela
+    // Exibe o tempo offline formatado
     echo "<td style='border: 1px solid #ddd; padding: 4px; text-align: center; color: #000000; font-weight: bold;' class='highlighted' data-seconds='$tempoOffline'>";
     if ($status == 'offline') {
         echo "<img src='img/icon_bloqueado.png' alt='Cliente Bloqueado' style='float: left; margin-right: 5px; width: 20px;'>"; // Ajuste o tamanho conforme necessário
