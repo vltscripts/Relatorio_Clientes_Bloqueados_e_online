@@ -5,13 +5,18 @@ include('addons.class.php');
 // VERIFICA SE O USUARIO ESTA LOGADO --------------------------------------------------------------
 session_name('mka');
 if (!isset($_SESSION)) session_start();
-if (!isset($_SESSION['MKA_Logado'])) exit('Acesso negado... <a href="/admin/">Fazer Login</a>');
+if (!isset($_SESSION['mka_logado']) && !isset($_SESSION['MKA_Logado'])) exit('Acesso negado... <a href="/admin/login.php">Fazer Login</a>');
 // VERIFICA SE O USUARIO ESTA LOGADO --------------------------------------------------------------
 
 // Assuming $Manifest is defined somewhere before this code
 $manifestTitle = isset($Manifest->{'name'}) ? $Manifest->{'name'} : '';
 $manifestVersion = isset($Manifest->{'version'}) ? $Manifest->{'version'} : '';
+
+// Verifica se os parâmetros GET relacionados à busca estão definidos e, se não estiverem, define-os como vazio
+$search = isset($_GET['search']) ? $_GET['search'] : '';
+$status = isset($_GET['status']) ? $_GET['status'] : '';
 ?>
+
 
 <!DOCTYPE html>
 <?php
@@ -181,6 +186,19 @@ if (isset($_SESSION['MM_Usuario'])) {
        }
 
     </style>
+	
+<script>
+    // Função para enviar o formulário de busca ao carregar a página
+    window.addEventListener('load', function() {
+        // Verifica se já existe um parâmetro de busca na URL
+        var searchParams = new URLSearchParams(window.location.search);
+        if (!searchParams.has('search')) {
+            // Se não houver parâmetros de busca, envie o formulário
+            document.getElementById('searchForm').submit();
+        }
+    });
+</script>
+
 
 <script>
     var sortDirection = 'asc'; // Definir a direção inicial da ordenação como ascendente
@@ -276,14 +294,14 @@ if (isset($_SESSION['MM_Usuario'])) {
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px;">
         <div style="width: 60%; margin-right: 10px;">
             <label for="search" style="font-weight: bold; margin-bottom: 5px;">Buscar Cliente:</label>
-            <input type="text" id="search" name="search" placeholder="Digite o Login ou Usuário" value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
+            <input type="text" id="search" name="search" placeholder="Digite o Login ou Usuário" value="<?php echo htmlspecialchars($search); ?>" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
         </div>
         <div style="width: 20%; margin-right: 10px;">
             <label for="status" style="font-weight: bold; margin-bottom: 5px;">Status:</label>
             <select id="status" name="status" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc;">
-                <option value="all" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'all') ? 'selected' : ''; ?>>Todos</option>
-                <option value="online" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'online') ? 'selected' : ''; ?>>Online</option>
-                <option value="offline" <?php echo (!empty($_GET['status']) && $_GET['status'] == 'offline') ? 'selected' : ''; ?>>Offline</option>
+                <option value="all" <?php echo ($status == 'all') ? 'selected' : ''; ?>>Todos</option>
+                <option value="online" <?php echo ($status == 'online') ? 'selected' : ''; ?>>Online</option>
+                <option value="offline" <?php echo ($status == 'offline') ? 'selected' : ''; ?>>Offline</option>
             </select>
         </div>
         <div style="display: flex; align-items: flex-end;">
@@ -295,13 +313,14 @@ if (isset($_SESSION['MM_Usuario'])) {
 </form>
 
 
+
 <script>
     function clearSearch() {
         // Limpa o campo de pesquisa
         document.getElementById('search').value = '';
 
         // Atualiza o valor do campo de seleção de status para "todos"
-        document.getElementById('status').value = 'todos';
+        document.getElementById('status').value = 'all';
 
         // Submeta o formulário
         document.getElementById('searchForm').submit();
@@ -368,60 +387,6 @@ if (isset($_SESSION['MM_Usuario'])) {
     });
 </script>
 
-    <?php
-        // Dados de conexão com o banco de dados já estão em config.php
-        // Inicialize a consulta SQL base
-        $countQuery = "SELECT COUNT(DISTINCT c.login) AS client_count 
-                        FROM sis_cliente c 
-                        LEFT JOIN radacct r ON c.login = r.username
-                        WHERE c.bloqueado = 'sim' 
-                        AND c.cli_ativado = 's' ";
-
-        // Verifique se uma pesquisa foi realizada
-        if (!empty($_GET['search'])) {
-            $search = '%' . mysqli_real_escape_string($link, $_GET['search']) . '%';
-            $countQuery .= " AND (c.login LIKE ? OR c.nome LIKE ? OR r.calledstationid LIKE ?)";
-        }
-
-        // Verifique se o status foi selecionado
-        if (!empty($_GET['status'])) {
-            if ($_GET['status'] == 'online') {
-                // Se o status for online, inclua apenas clientes com uma sessão ativa
-                $countQuery .= " AND r.acctstoptime IS NULL 
-                                AND r.radacctid IS NOT NULL";
-            } elseif ($_GET['status'] == 'offline') {
-                // Se o status for offline, inclua apenas clientes sem sessão ativa
-                $countQuery .= " AND IFNULL(r.acctstoptime, '1970-01-01 00:00:00') < NOW() 
-                                AND NOT EXISTS (
-                                    SELECT 1 FROM radacct ra WHERE ra.username = c.login AND ra.acctstoptime IS NULL
-                                )";
-            }
-        }
-
-        // Prepare a consulta SQL
-        $stmt = mysqli_prepare($link, $countQuery);
-
-        // Se uma pesquisa foi realizada, vincule os parâmetros de pesquisa
-        if (!empty($_GET['search'])) {
-            mysqli_stmt_bind_param($stmt, "sss", $search, $search, $search);
-        }
-
-        // Execute a consulta SQL
-        mysqli_stmt_execute($stmt);
-        $countResult = mysqli_stmt_get_result($stmt);
-
-        if ($countResult) {
-            $countRow = mysqli_fetch_assoc($countResult);
-            $clientCount = $countRow['client_count'];
-
-            echo "<div class='client-count-container'><p class='client-count blue'>Quantidade de clientes: $clientCount</p></div>";
-        } else {
-            echo "<div class='client-count-container'><p class='client-count blue'>Erro ao obter a quantidade de clientes</p></div>";
-        }
-
-        // Tabela: Nomes dos Clientes com Logins Lado a Lado
-    ?>
-
         <div class="table-container">
             <table>
                 <thead>
@@ -483,18 +448,32 @@ $query .= " GROUP BY c.uuid_cliente, c.nome, c.login, c.tit_vencidos, c.data_blo
 // Execute a consulta
 $result = mysqli_query($link, $query);
 
-// Execute a consulta
-$result = mysqli_query($link, $query);
-
 // Verifique se a consulta foi bem-sucedida
 if ($result) {
+    // Obtenha o número total de linhas retornadas pela consulta
+    $totalRows = mysqli_num_rows($result);
+    $rowNumber = 0; // Inicialize o número da linha
 	
-// Exiba os resultados da consulta SQL
-while ($row = mysqli_fetch_assoc($result)) {
-    $nome_por_num_titulo = "Nome do Cliente: " . $row['nome'] . " - UUID: " . $row['uuid_cliente'];
+	    // Inicialize a variável para contagem total de bloqueados
+    $total_bloqueados = 0;
 
-    // Adiciona a classe 'nome_cliente' e 'highlight' (para linhas ímpares) alternadamente
-    $nomeClienteClass = ($rowNumber % 2 == 0) ? 'nome_cliente' : 'nome_cliente highlight';
+    // Exiba os resultados da consulta SQL
+    while ($row = mysqli_fetch_assoc($result)) {
+        $nome_por_num_titulo = '';
+
+        // Verificar se 'nome' e 'uuid_cliente' estão presentes em $row antes de concatenar
+        if (isset($row['nome'], $row['uuid_cliente'])) {
+            $nome_por_num_titulo = "Nome do Cliente: " . $row['nome'] . " - UUID: " . $row['uuid_cliente'];
+        } else {
+            // Se o nome do cliente não estiver presente, defina uma mensagem de erro
+            $nome_por_num_titulo = "Nome do Cliente não disponível";
+        }
+
+        // Verifica se a linha atual é ímpar ou par e define a classe correspondente
+        $nomeClienteClass = ($rowNumber % 2 == 0) ? 'nome_cliente' : 'nome_cliente highlight';
+		
+		        // Incrementa a contagem total de bloqueados
+        $total_bloqueados++;
 
     // Converta a data para um formato de timestamp usando strtotime()
     $dataBloqTimestamp = strtotime($row['data_bloq']);
@@ -587,14 +566,14 @@ echo "</td>";
     echo "</td>";
 }
 
-
     echo "</tr>";
 }
-                    } else {
-                        // Se a consulta falhar, exiba uma mensagem de erro
-                        echo "<tr><td colspan='5'>Erro na consulta: " . mysqli_error($link) . "</td></tr>";
-					
-                    }
+    // Exibe o total de bloqueados fora do loop
+    echo "<p style='text-align: center; font-weight: bold;'>Total de bloqueados: $total_bloqueados</p>";
+} else {
+    // Se a consulta falhar, exiba uma mensagem de erro
+    echo "<p>Erro na consulta: " . mysqli_error($link) . "</p>";
+}
                     ?>
                 </tbody>
             </table>
